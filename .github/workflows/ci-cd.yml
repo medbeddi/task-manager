@@ -90,52 +90,57 @@ jobs:
   deploy-k8s:
     needs: [docker-push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
 
       - name: Vérifier les secrets de déploiement
         env:
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        shell: pwsh
         run: |
-          if [ -z "$KUBE_CONFIG_DATA" ] || [ -z "$POSTGRES_PASSWORD" ] || [ -z "$JWT_SECRET" ]; then
-            echo "Missing required deployment secrets (KUBE_CONFIG_DATA, POSTGRES_PASSWORD, JWT_SECRET)."
-            exit 1
-          fi
+          if ([string]::IsNullOrWhiteSpace($env:POSTGRES_PASSWORD) -or [string]::IsNullOrWhiteSpace($env:JWT_SECRET)) {
+            throw "Missing required deployment secrets (POSTGRES_PASSWORD, JWT_SECRET)."
+          }
 
       - name: Installer kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: "latest"
 
-      - name: Installer kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: "5.4.3"
-
-      - name: Configurer kubeconfig
+      - name: Configurer kubeconfig (optionnel)
+        shell: pwsh
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
         run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
+          if (-not [string]::IsNullOrWhiteSpace($env:KUBE_CONFIG_DATA)) {
+            $kubeDir = Join-Path $env:USERPROFILE ".kube"
+            New-Item -ItemType Directory -Path $kubeDir -Force | Out-Null
+            $kubeConfigPath = Join-Path $kubeDir "config"
+            [IO.File]::WriteAllBytes($kubeConfigPath, [Convert]::FromBase64String($env:KUBE_CONFIG_DATA))
+          }
+
+      - name: Vérifier connexion cluster
+        shell: pwsh
+        run: |
+          kubectl config current-context
+          kubectl get nodes
 
       - name: Créer / mettre à jour le secret applicatif
+        shell: pwsh
         run: |
           kubectl create namespace task-manager --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret generic task-manager-secrets \
-            --namespace=task-manager \
-            --from-literal=postgres-password='${{ secrets.POSTGRES_PASSWORD }}' \
-            --from-literal=jwt-secret='${{ secrets.JWT_SECRET }}' \
-            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic task-manager-secrets --namespace=task-manager --from-literal=postgres-password="${{ secrets.POSTGRES_PASSWORD }}" --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Déployer sur Kubernetes
+        shell: pwsh
         run: |
-          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
-          cd k8s
-          kustomize edit set image task-manager-backend=${{ env.REGISTRY }}/$OWNER_LC/task-manager-backend:${{ github.sha }}
-          kustomize edit set image task-manager-frontend=${{ env.REGISTRY }}/$OWNER_LC/task-manager-frontend:${{ github.sha }}
-          kubectl apply -k .
+          $ownerLc = "${{ github.repository_owner }}".ToLowerInvariant()
+          $backendImage = "${{ env.REGISTRY }}/$ownerLc/task-manager-backend:${{ github.sha }}"
+          $frontendImage = "${{ env.REGISTRY }}/$ownerLc/task-manager-frontend:${{ github.sha }}"
+          kubectl apply -k k8s
+          kubectl -n task-manager set image deployment/backend backend=$backendImage
+          kubectl -n task-manager set image deployment/frontend nginx=$frontendImage
           kubectl rollout status deployment/backend -n task-manager --timeout=180s
           kubectl rollout status deployment/frontend -n task-manager --timeout=180s
