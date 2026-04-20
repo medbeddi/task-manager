@@ -1,0 +1,22 @@
+.auth-wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 2rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.full {
+  width: 100%;
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.error {
+  color: var(--mat-form-field-error-text-color, #f44336);
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}

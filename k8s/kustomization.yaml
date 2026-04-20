@@ -1,0 +1,36 @@
+# Déploiement : créer d’abord le secret (voir docs/DEPLOIEMENT-KUBERNETES.md)
+# Puis : kubectl apply -k k8s/
+#
+# Mettre à jour les images après CI :
+#   cd k8s && kustomize edit set image \
+#     task-manager-backend=ghcr.io/votre-org/task-manager-backend:SHA \
+#     task-manager-frontend=ghcr.io/votre-org/task-manager-frontend:SHA
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: task-manager
+
+resources:
+  - namespace.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - backend-service.yaml
+  - backend-deployment.yaml
+  - frontend-service.yaml
+  - frontend-deployment.yaml
+  - ingress.yaml
+  - hpa-backend.yaml
+
+images:
+  # Remplacez example par votre compte/organisation GitHub (minuscules), ou :
+  # kustomize edit set image task-manager-backend=ghcr.io/org/task-manager-backend:abc123
+  - name: task-manager-backend
+    newName: ghcr.io/example/task-manager-backend
+    newTag: latest
+  - name: task-manager-frontend
+    newName: ghcr.io/example/task-manager-frontend
+    newTag: latest
+
+commonLabels:
+  app.kubernetes.io/part-of: task-manager

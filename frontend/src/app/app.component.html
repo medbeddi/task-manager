@@ -1,0 +1,17 @@
+<mat-toolbar color="primary" class="app-toolbar">
+  <a routerLink="/tasks" class="brand">Task Manager</a>
+  <span class="spacer"></span>
+  @if (auth.isLoggedIn()) {
+    <span class="user-label">{{ auth.getUsername() }}</span>
+    <button mat-icon-button type="button" (click)="logout()" aria-label="Log out">
+      <mat-icon>logout</mat-icon>
+    </button>
+  } @else {
+    <a mat-button routerLink="/login">Login</a>
+    <a mat-flat-button color="accent" routerLink="/register">Register</a>
+  }
+</mat-toolbar>
+
+<main class="app-main">
+  <router-outlet />
+</main>

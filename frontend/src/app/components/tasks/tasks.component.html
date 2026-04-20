@@ -1,0 +1,75 @@
+<div class="tasks-header">
+  <h1>My tasks</h1>
+  <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+    <mat-icon>add</mat-icon>
+    Add task
+  </button>
+</div>
+
+<div class="filters">
+  <mat-form-field appearance="outline" class="filter-field">
+    <mat-label>Status</mat-label>
+    <mat-select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()">
+      <mat-option value="">All</mat-option>
+      <mat-option value="PENDING">Pending</mat-option>
+      <mat-option value="IN_PROGRESS">In progress</mat-option>
+      <mat-option value="DONE">Done</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="filter-field">
+    <mat-label>Priority</mat-label>
+    <mat-select [(ngModel)]="filterPriority" (ngModelChange)="onFilterChange()">
+      <mat-option value="">All</mat-option>
+      <mat-option value="LOW">Low</mat-option>
+      <mat-option value="MEDIUM">Medium</mat-option>
+      <mat-option value="HIGH">High</mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (loading) {
+  <div class="center">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (tasks.length === 0) {
+  <p class="empty">No tasks yet. Create one with “Add task”.</p>
+} @else {
+  <div class="grid">
+    @for (task of tasks; track task.id) {
+      <mat-card class="task-card">
+        <mat-card-header>
+          <mat-card-title>{{ task.title }}</mat-card-title>
+          <mat-card-subtitle>
+            <span class="chip priority-{{ task.priority.toLowerCase() }}">{{ priorityLabel(task.priority) }}</span>
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (task.description) {
+            <p class="desc">{{ task.description }}</p>
+          } @else {
+            <p class="desc muted">No description</p>
+          }
+          <mat-form-field appearance="outline" class="status-field" subscriptSizing="dynamic">
+            <mat-label>Status</mat-label>
+            <mat-select
+              [value]="task.status"
+              (valueChange)="updateStatus(task, $event)"
+            >
+              <mat-option value="PENDING">Pending</mat-option>
+              <mat-option value="IN_PROGRESS">In progress</mat-option>
+              <mat-option value="DONE">Done</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-icon-button type="button" (click)="openEdit(task)" aria-label="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button type="button" color="warn" (click)="deleteTask(task)" aria-label="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  </div>
+}

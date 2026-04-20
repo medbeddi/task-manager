@@ -1,0 +1,26 @@
+# Nécessite un Ingress Controller (ex. ingress-nginx : https://kubernetes.github.io/ingress-nginx/deploy/)
+# Remplacez le host par votre domaine et ajoutez TLS si besoin (cert-manager, etc.)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: task-manager
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "5m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: task-manager.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+  # tls:
+  #   - hosts:
+  #       - task-manager.example.com
+  #     secretName: task-manager-tls
