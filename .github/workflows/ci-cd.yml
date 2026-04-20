@@ -89,10 +89,21 @@ jobs:
 
   deploy-k8s:
     needs: [docker-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.KUBE_CONFIG_DATA != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Vérifier les secrets de déploiement
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          if [ -z "$KUBE_CONFIG_DATA" ] || [ -z "$POSTGRES_PASSWORD" ] || [ -z "$JWT_SECRET" ]; then
+            echo "Missing required deployment secrets (KUBE_CONFIG_DATA, POSTGRES_PASSWORD, JWT_SECRET)."
+            exit 1
+          fi
 
       - name: Installer kubectl
         uses: azure/setup-kubectl@v4
