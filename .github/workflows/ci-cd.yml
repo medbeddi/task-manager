@@ -124,23 +124,35 @@ jobs:
       - name: Vérifier connexion cluster
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           kubectl config current-context
+          if (-not $?) { throw "Failed to read current kubectl context." }
           kubectl get nodes
+          if (-not $?) { throw "Failed to list cluster nodes." }
 
       - name: Créer / mettre à jour le secret applicatif
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           kubectl create namespace task-manager --dry-run=client -o yaml | kubectl apply -f -
+          if (-not $?) { throw "Failed to create/apply namespace task-manager." }
           kubectl create secret generic task-manager-secrets --namespace=task-manager --from-literal=postgres-password="${{ secrets.POSTGRES_PASSWORD }}" --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" --dry-run=client -o yaml | kubectl apply -f -
+          if (-not $?) { throw "Failed to create/apply task-manager-secrets." }
 
       - name: Déployer sur Kubernetes
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           $ownerLc = "${{ github.repository_owner }}".ToLowerInvariant()
           $backendImage = "${{ env.REGISTRY }}/$ownerLc/task-manager-backend:${{ github.sha }}"
           $frontendImage = "${{ env.REGISTRY }}/$ownerLc/task-manager-frontend:${{ github.sha }}"
           kubectl apply -k k8s
+          if (-not $?) { throw "Failed to apply Kubernetes manifests." }
           kubectl -n task-manager set image deployment/backend backend=$backendImage
+          if (-not $?) { throw "Failed to set backend deployment image." }
           kubectl -n task-manager set image deployment/frontend nginx=$frontendImage
-          kubectl rollout status deployment/backend -n task-manager --timeout=180s
-          kubectl rollout status deployment/frontend -n task-manager --timeout=180s
+          if (-not $?) { throw "Failed to set frontend deployment image." }
+          kubectl rollout status deployment/backend -n task-manager --timeout=600s
+          if (-not $?) { throw "Backend rollout did not complete successfully." }
+          kubectl rollout status deployment/frontend -n task-manager --timeout=600s
+          if (-not $?) { throw "Frontend rollout did not complete successfully." }
