@@ -1,41 +1,100 @@
-<div class="tasks-header">
-  <h1>My tasks</h1>
-  <button mat-flat-button color="primary" type="button" (click)="openCreate()">
-    <mat-icon>add</mat-icon>
-    Add task
-  </button>
+<div class="hero">
+  <div>
+    <p class="hero-kicker">Task manager</p>
+    <h1>My tasks</h1>
+    <p class="hero-subtitle">Track work, stay focused, and ship faster.</p>
+  </div>
+  <div class="hero-actions">
+    <button mat-stroked-button type="button" (click)="clearFilters()">
+      <mat-icon>restart_alt</mat-icon>
+      Reset
+    </button>
+    <button mat-flat-button color="primary" type="button" (click)="openCreate()">
+      <mat-icon>add</mat-icon>
+      New task
+    </button>
+  </div>
 </div>
 
-<div class="filters">
-  <mat-form-field appearance="outline" class="filter-field">
-    <mat-label>Status</mat-label>
-    <mat-select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()">
-      <mat-option value="">All</mat-option>
-      <mat-option value="PENDING">Pending</mat-option>
-      <mat-option value="IN_PROGRESS">In progress</mat-option>
-      <mat-option value="DONE">Done</mat-option>
-    </mat-select>
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="filter-field">
-    <mat-label>Priority</mat-label>
-    <mat-select [(ngModel)]="filterPriority" (ngModelChange)="onFilterChange()">
-      <mat-option value="">All</mat-option>
-      <mat-option value="LOW">Low</mat-option>
-      <mat-option value="MEDIUM">Medium</mat-option>
-      <mat-option value="HIGH">High</mat-option>
-    </mat-select>
-  </mat-form-field>
+<div class="stats-grid">
+  <mat-card class="stat-card">
+    <p class="stat-label">Total</p>
+    <p class="stat-value">{{ totalCount }}</p>
+  </mat-card>
+  <mat-card class="stat-card">
+    <p class="stat-label">Pending</p>
+    <p class="stat-value">{{ pendingCount }}</p>
+  </mat-card>
+  <mat-card class="stat-card">
+    <p class="stat-label">In progress</p>
+    <p class="stat-value">{{ inProgressCount }}</p>
+  </mat-card>
+  <mat-card class="stat-card">
+    <p class="stat-label">Done</p>
+    <p class="stat-value">{{ doneCount }}</p>
+  </mat-card>
+</div>
+
+<mat-card class="toolbar">
+  <div class="toolbar-row">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search tasks</mat-label>
+      <input matInput [(ngModel)]="searchQuery" placeholder="Title or description..." />
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Sort</mat-label>
+      <mat-select [(ngModel)]="sortBy">
+        @for (option of sortOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="toolbar-row">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()">
+        <mat-option value="">All</mat-option>
+        @for (status of statusOptions; track status.value) {
+          <mat-option [value]="status.value">{{ status.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Priority</mat-label>
+      <mat-select [(ngModel)]="filterPriority" (ngModelChange)="onFilterChange()">
+        <mat-option value="">All</mat-option>
+        @for (priority of priorityOptions; track priority.value) {
+          <mat-option [value]="priority.value">{{ priority.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-button color="warn" type="button" [disabled]="doneCount === 0 || loading" (click)="deleteDoneTasks()">
+      <mat-icon>delete_sweep</mat-icon>
+      Clear completed
+    </button>
+  </div>
+</mat-card>
+
+<div class="results-bar">
+  <span>{{ filteredTasks.length }} / {{ totalCount }} task(s)</span>
+  <span class="completion">Completion: {{ completionRate }}%</span>
 </div>
 
 @if (loading) {
   <div class="center">
     <mat-spinner diameter="40" />
   </div>
-} @else if (tasks.length === 0) {
-  <p class="empty">No tasks yet. Create one with “Add task”.</p>
+} @else if (filteredTasks.length === 0) {
+  <p class="empty">No matching task. Try another search or create a new one.</p>
 } @else {
   <div class="grid">
-    @for (task of tasks; track task.id) {
+    @for (task of filteredTasks; track task.id) {
       <mat-card class="task-card">
         <mat-card-header>
           <mat-card-title>{{ task.title }}</mat-card-title>
@@ -55,13 +114,19 @@
               [value]="task.status"
               (valueChange)="updateStatus(task, $event)"
             >
-              <mat-option value="PENDING">Pending</mat-option>
-              <mat-option value="IN_PROGRESS">In progress</mat-option>
-              <mat-option value="DONE">Done</mat-option>
+              @for (status of statusOptions; track status.value) {
+                <mat-option [value]="status.value">{{ status.label }}</mat-option>
+              }
             </mat-select>
           </mat-form-field>
         </mat-card-content>
         <mat-card-actions align="end">
+          <button mat-icon-button type="button" aria-label="Mark as done" (click)="markAsDone(task)">
+            <mat-icon>task_alt</mat-icon>
+          </button>
+          <button mat-icon-button type="button" aria-label="Duplicate" (click)="duplicateTask(task)">
+            <mat-icon>content_copy</mat-icon>
+          </button>
           <button mat-icon-button type="button" (click)="openEdit(task)" aria-label="Edit">
             <mat-icon>edit</mat-icon>
           </button>
